@@ -1,0 +1,62 @@
+[
+  {
+    "_id": "Food & Drink",
+    "description": "Chi tiêu cho ăn uống, cà phê, nhà hàng"
+  },
+  {
+    "_id": "Transportation",
+    "description": "Di chuyển: xe buýt, taxi, xăng"
+  },
+  {
+    "_id": "Utilities",
+    "description": "Điện, nước, internet"
+  },
+  {
+    "_id": "Entertainment",
+    "description": "Giải trí: xem phim, game, du lịch"
+  },
+  {
+    "_id": "Groceries",
+    "description": "Mua sắm thực phẩm, đồ dùng"
+  },
+  {
+    "_id": "Health",
+    "description": "Y tế, thuốc, khám bệnh"
+  },
+  {
+    "_id": "Education",
+    "description": "Học phí, sách vở, khóa học"
+  },
+  {
+    "_id": "Others",
+    "description": "Các chi tiêu khác"
+  },
+  {
+    "_id": "Rent",
+    "description": "Chi phí thuê nhà, phòng, văn phòng"
+  },
+  {
+    "_id": "Investment",
+    "description": "Đầu tư: cổ phiếu, bất động sản, tài sản khác"
+  },
+  {
+    "_id": "Salary",
+    "description": "Lương, thưởng, thu nhập cá nhân"
+  },
+  {
+    "_id": "Health & Fitness",
+    "description": "Chi phí y tế, tập thể dục, thể hình"
+  },
+  {
+    "_id": "Shopping",
+    "description": "Mua sắm cá nhân: quần áo, đồ điện tử, v.v."
+  },
+  {
+    "_id": "Travel",
+    "description": "Du lịch, nghỉ dưỡng, công tác"
+  },
+  {
+    "_id": "Other",
+    "description": "Chi tiêu khác chưa phân loại"
+  }
+]
