@@ -73,6 +73,9 @@ Chứa thông tin người dùng.
 - Danh mục chi tiêu nhiều nhất: `Food & Drink`
 - Tháng chi tiêu cao nhất: `2023-06` với hơn 30,000 VNĐ
 - Một số danh mục chi tiêu đều đặn theo chu kỳ hàng tháng như `Rent`, `Utilities`
+- Phân tích chi tiêu hàng tháng
+- Quản lý chi tiêu cá nhân
+
 
 ---
 
