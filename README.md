@@ -91,5 +91,12 @@ Chứa thông tin người dùng.
 
 ---
 
+## 👤 Thông tin
+
+- Sinh viên: Phạm Nguyễn Tuân-2221050253
+             Đào Anh Tú-2221050231
+- Môn học: Dữ liệu lớn và ứng dụng 
+- Trường: Đại học Mỏ-Địa chất
+- Năm học: 2024-2025
 
 ---
