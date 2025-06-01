@@ -79,7 +79,7 @@ Chứa thông tin người dùng.
 ## 📁 File chính
 
 - `analyze_expenses.py`: script thực hiện kết nối MongoDB, xử lý và trực quan dữ liệu
-- `expenses.json`, `categories.json`, `users.json`: collection, dữ liệu gốc
+- `expenses.json`, `categories_updated.json`, `users.json`: collection, dữ liệu gốc
 
 ---
 
