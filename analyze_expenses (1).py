@@ -45,7 +45,7 @@ categories = sorted(df["category"].dropna().unique())
 
 selected_month = st.sidebar.selectbox("Chọn tháng", months)
 selected_categories = st.sidebar.multiselect("Chọn danh mục", categories, default=categories)
-amount_range = st.sidebar.slider("Khoảng tiền (VND)", 0, int(df["amount"].max()), (0, int(df["amount"].max())))
+amount_range = st.sidebar.slider("Khoảng tiền (USD)", 0, int(df["amount"].max()), (0, int(df["amount"].max())))
 
 filtered_df = df[(df["month"] == selected_month) &
                  (df["category"].isin(selected_categories)) &
@@ -88,13 +88,14 @@ if st.sidebar.checkbox("Xoá tất cả giao dịch đã lọc"):
 # KPI
 col1, col2, col3 = st.columns(3)
 with col1:
-    total_expense = df[df["type"] == "Expense"]["amount"].sum()
-    st.metric("Tổng chi tiêu", f"{total_expense:,.0f} VND")
+    total_filtered_expense = filtered_df[filtered_df["type"] == "Expense"]["amount"].sum()
+    st.metric("Tổng chi tiêu (lọc)", f"{total_filtered_expense:,.0f} USD")
 with col2:
-    total_income = df[df["type"] == "Income"]["amount"].sum()
-    st.metric("Tổng thu nhập", f"{total_income:,.0f} VND")
+    total_filtered_income = filtered_df[filtered_df["type"] == "Income"]["amount"].sum()
+    st.metric("Tổng thu nhập (lọc)", f"{total_filtered_income:,.0f} USD")
 with col3:
-    st.metric("Số giao dịch", len(filtered_df))
+    st.metric("Số giao dịch (lọc)", len(filtered_df))
+
 
 # Biểu đồ tròn theo danh mục
 st.subheader(f"🧁 Chi tiêu theo danh mục - {selected_month}")
