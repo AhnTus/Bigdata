@@ -1,174 +1,105 @@
-from pymongo import MongoClient
+# app.py
+import streamlit as st
 import pandas as pd
+from pymongo import MongoClient
 import matplotlib.pyplot as plt
-import seaborn as sns
 
 # Kết nối MongoDB
 client = MongoClient("mongodb://localhost:27017/")
 db = client["finance"]
 collection = db["expenses"]
 
-# Lấy dữ liệu chi tiêu
-cursor = collection.find({"type": "Expense"})
-df = pd.DataFrame(list(cursor))
+st.set_page_config(page_title="Chi tiêu cá nhân", layout="wide")
 
-# Chuyển kiểu datetime & tạo cột thời gian
-df['date'] = pd.to_datetime(df['date'])
-df['month'] = df['date'].dt.to_period('M').astype(str)
+# Load dữ liệu
+@st.cache_data
+def load_data():
+    data = list(collection.find({"type": "Expense"}))
+    df = pd.DataFrame(data)
+    df["date"] = pd.to_datetime(df["date"])
+    df["month"] = df["date"].dt.to_period("M").astype(str)
+    return df
 
-# Thiết lập style chung
-sns.set(style="whitegrid")
+df = load_data()
 
+st.title("📊 Phân tích Chi tiêu Cá nhân")
 
-monthly_sum = df.groupby('month')['amount'].sum().sort_index()
-category_sum = df.groupby('category')['amount'].sum().sort_values()
+# Bộ lọc nâng cao
+st.sidebar.header("🎯 Bộ lọc")
+months = sorted(df["month"].unique())
+categories = sorted(df["category"].dropna().unique())
 
-#1
-# KPI: Tổng thu nhập, Tổng chi tiêu, Số dư ròng
-df_income = collection.find({"type": "Income"})
-df_income = pd.DataFrame(list(df_income))
+selected_month = st.sidebar.selectbox("Chọn tháng", months)
+selected_categories = st.sidebar.multiselect("Chọn danh mục", categories, default=categories)
+amount_range = st.sidebar.slider("Khoảng tiền (VND)", 0, int(df["amount"].max()), (0, int(df["amount"].max())))
 
-df_expense = collection.find({"type": "Expense"})
-df_expense = pd.DataFrame(list(df_expense))
+filtered_df = df[(df["month"] == selected_month) &
+                 (df["category"].isin(selected_categories)) &
+                 (df["amount"] >= amount_range[0]) &
+                 (df["amount"] <= amount_range[1])]
 
-total_income = df_income['amount'].sum()
-total_expense = df_expense['amount'].sum()
-net_balance = total_income - total_expense
+# Giao diện thêm dữ liệu
+st.sidebar.header("➕ Thêm giao dịch")
+with st.sidebar.form("add_transaction"):
+    date = st.date_input("Ngày")
+    category = st.selectbox("Danh mục", categories)
+    amount = st.number_input("Số tiền", min_value=0)
+    description = st.text_input("Mô tả")
+    submitted = st.form_submit_button("Thêm")
+    if submitted:
+        collection.insert_one({
+            "date": pd.to_datetime(date),
+            "category": category,
+            "amount": amount,
+            "description": description,
+            "type": "Expense",
+            "user_id": "user01"
+        })
+        st.success("✅ Đã thêm giao dịch mới.")
+        st.experimental_rerun()
 
-# Dữ liệu
-kpi_labels = ["Tổng thu", "Tổng chi", "Số dư ròng"]
-kpi_values = [total_income, total_expense, net_balance]
-colors = ['green', 'red', 'blue']
+# Xoá giao dịch
+st.sidebar.header("🗑️ Xoá giao dịch")
+if st.sidebar.checkbox("Xoá tất cả giao dịch đã lọc"):
+    if st.sidebar.button("Xác nhận xoá"):
+        deleted = collection.delete_many({
+            "month": selected_month,
+            "category": {"$in": selected_categories},
+            "amount": {"$gte": amount_range[0], "$lte": amount_range[1]}
+        })
+        st.sidebar.success(f"Đã xoá {deleted.deleted_count} bản ghi.")
+        st.experimental_rerun()
 
-plt.figure(figsize=(6, 6))
-sns.barplot(x=kpi_labels, y=kpi_values, palette=colors)
-plt.title("TỔNG QUAN TÀI CHÍNH", fontsize=16)
-plt.ylabel("Số tiền (VND)")
-for i, value in enumerate(kpi_values):
-    plt.text(i, value + max(kpi_values) * 0.03, f"{value:,.0f}", ha='center', fontsize=12)
-plt.tight_layout()
-plt.show()
+# KPI
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric("Tổng chi tiêu", f"{filtered_df['amount'].sum():,.0f} VND")
+with col2:
+    st.metric("Số giao dịch", len(filtered_df))
+with col3:
+    st.metric("Danh mục", filtered_df['category'].nunique())
 
+# Biểu đồ tròn theo danh mục
+st.subheader(f"🧁 Chi tiêu theo danh mục - {selected_month}")
+category_sum = filtered_df.groupby("category")["amount"].sum()
+fig1, ax1 = plt.subplots()
+category_sum.plot.pie(autopct='%1.1f%%', ax=ax1)
+ax1.set_ylabel("")
+st.pyplot(fig1)
 
+# Gợi ý tiết kiệm
+st.subheader("💡 Gợi ý tiết kiệm")
+monthly_avg = df.groupby("category")["amount"].mean()
+current = filtered_df.groupby("category")["amount"].sum()
+for cat in current.index:
+    if cat in monthly_avg:
+        if current[cat] > monthly_avg[cat] * 1.2:
+            st.warning(f"Danh mục '{cat}' vượt 20% so với trung bình. Cân nhắc tiết chế.")
 
-# 2️⃣ Bar chart: Chi tiêu theo danh mục
-# Lọc chi tiêu
-df_expense = df[df['type'] == 'Expense']
+# Hiển thị bảng dữ liệu
+st.subheader("📋 Chi tiết giao dịch")
+st.dataframe(filtered_df[["date", "category", "amount", "description"]].sort_values(by="date", ascending=False))
 
-# Nhóm theo tháng và danh mục, tính tổng
-grouped = df_expense.groupby(['month', 'category'])['amount'].sum().reset_index()
-
-# Với mỗi tháng, tìm danh mục chi nhiều nhất
-idx = grouped.groupby('month')['amount'].idxmax()
-top_spending = grouped.loc[idx].sort_values('month')
-
-# Vẽ biểu đồ
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-plt.figure(figsize=(15, 6))
-sns.barplot(data=top_spending, x='month', y='amount', hue='category', dodge=False, palette='Set2')
-plt.title('Danh mục chi tiêu nhiều nhất mỗi tháng')
-plt.xlabel('Tháng')
-plt.ylabel('Số tiền')
-plt.xticks(rotation=45)
-plt.legend(title='Danh mục', bbox_to_anchor=(1.05, 1), loc='upper left')
-plt.tight_layout()
-plt.show()
-
-
-# 3️⃣ Line chart: Chi tiêu theo tháng
-pareto = df.groupby("category")["amount"].sum().sort_values(ascending=False)
-cum_pct = pareto.cumsum() / pareto.sum()
-
-plt.figure(figsize=(10, 5))
-sns.barplot(x=pareto.index, y=pareto.values, color='skyblue')
-plt.plot(pareto.index, cum_pct.values, color='red', marker='o')
-plt.title("Biểu đồ: Chi tiêu theo danh mục", fontsize=14)
-plt.ylabel("Số tiền")
-plt.xticks(rotation=45)
-plt.grid(axis='y')
-plt.tight_layout()
-plt.show()
-
-# 4️⃣ Pie chart: Tỷ lệ chi tiêu theo danh mục
-plt.figure(figsize=(10, 5))
-sns.boxplot(data=df, x="category", y="amount")
-plt.title("Phân phối chi tiêu từng danh mục – phát hiện bất thường", fontsize=14)
-plt.xticks(rotation=45)
-plt.tight_layout()
-plt.show()
-
-# 5️⃣ Stacked area chart: Chi tiêu các danh mục theo tháng
-# Lọc giao dịch chi tiêu
-df_expense = df[df['type'] == 'Expense']
-
-# Sắp xếp giảm dần theo số tiền
-top10 = df_expense.sort_values(by='amount', ascending=False).head(10)
-
-# Chọn cột cần thiết và định dạng lại ngày
-top10_display = top10[['date', 'description', 'amount']].copy()
-top10_display['date'] = pd.to_datetime(top10_display['date']).dt.strftime('%d/%m/%Y')
-
-# Tạo bảng bằng matplotlib
-import matplotlib.pyplot as plt
-
-fig, ax = plt.subplots(figsize=(7, 3.5))  # chỉnh kích thước bảng
-ax.axis('tight')
-ax.axis('off')
-table = ax.table(
-    cellText=top10_display.values,
-    colLabels=["Date", "Transaction Description", "Amount"],
-    cellLoc='center',
-    loc='center',
-)
-
-table.auto_set_font_size(False)
-table.set_fontsize(10)
-table.scale(1, 1.5)  # giãn dòng
-
-plt.title("10 giao dịch chi lớn nhất", fontsize=13, fontweight='bold', pad=10)
-plt.tight_layout()
-plt.show()
-
-
-
-
-# --------- CRUD DEMO ---------
-
-# CREATE
-new_expense = {
-    "date": "2025-05-28T00:00:00",
-    "amount": 120000,
-    "category": "Entertainment",
-    "description": "Xem phim CGV",
-    "type": "Expense",
-    "user_id": "user01"
-}
-collection.insert_one(new_expense)
-print("✅ CREATE: Đã thêm bản ghi.")
-
-# READ
-record = collection.find_one({"description": "Xem phim CGV"})
-print("📄 READ: Bản ghi tìm được:", record)
-
-# UPDATE
-collection.update_one(
-    {"description": "Xem phim CGV"},
-    {"$set": {"amount": 150000, "category": "Leisure"}}
-)
-print("✅ UPDATE: Đã cập nhật bản ghi.")
-
-# DELETE
-collection.delete_one({"description": "Xem phim CGV"})
-print("🗑️ DELETE: Đã xoá bản ghi.")
-
-# --- Insight tổng kết ---
-print("\n🎯 Insight tổng hợp:")
-print("👉 Tháng chi tiêu nhiều nhất:", monthly_sum.idxmax(), f"({monthly_sum.max():,.0f} VNĐ)")
-print("👉 Danh mục chi tiêu cao nhất:", category_sum.idxmax(), f"({category_sum.max():,.0f} VNĐ)")
-print("👉 Trung bình chi tiêu mỗi tháng:", df.groupby('month')['amount'].sum().mean())
-print("👉 Mức chi cao nhất:", df['amount'].max())
 
 
 
